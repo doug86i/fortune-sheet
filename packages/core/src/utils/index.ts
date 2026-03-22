@@ -106,8 +106,11 @@ export function escapeHTMLTag(str: string) {
 }
 
 export function getSheetIndex(ctx: Context, id: string) {
+  if (id == null) return null;
+  const idStr = String(id);
   for (let i = 0; i < ctx.luckysheetfile.length; i += 1) {
-    if (ctx.luckysheetfile[i]?.id === id) {
+    const sid = ctx.luckysheetfile[i]?.id;
+    if (sid != null && String(sid) === idStr) {
       return i;
     }
   }
