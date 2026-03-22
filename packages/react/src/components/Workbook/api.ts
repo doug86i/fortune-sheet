@@ -56,25 +56,28 @@ export function generateAPIs(
             } else if (specialOp.op === "deleteRowCol") {
               deleteRowCol(ctx_, specialOp.value);
             } else if (specialOp.op === "addSheet") {
-              const name = patches.filter(
-                (path) => path.path[0] === "name"
-              )?.[0]?.value;
-              if (specialOp.value?.id) {
-                addSheet(
-                  ctx_,
-                  settings,
-                  specialOp.value.id,
-                  false,
-                  name,
-                  specialOp.value
-                );
+              const sheetPayload = specialOp.value;
+              // `patchToOp` may emit `value: addSheetOps[0]?.value` — undefined used to
+              // reach `initSheetData` and throw on destructure. Skip when missing.
+              if (sheetPayload != null) {
+                const name = patches.filter(
+                  (path) => path.path[0] === "name"
+                )?.[0]?.value;
+                if (sheetPayload.id != null && sheetPayload.id !== "") {
+                  addSheet(
+                    ctx_,
+                    settings,
+                    sheetPayload.id as string,
+                    false,
+                    name,
+                    sheetPayload
+                  );
+                }
+                const fileIndex = getSheetIndex(ctx_, sheetPayload.id as string);
+                if (fileIndex != null) {
+                  api.initSheetData(ctx_, fileIndex, sheetPayload);
+                }
               }
-              // 添加addSheet完后，给sheet初始化data
-              const fileIndex = getSheetIndex(
-                ctx_,
-                specialOp.value.id
-              ) as number;
-              api.initSheetData(ctx_, fileIndex, specialOp.value);
             } else if (specialOp.op === "deleteSheet") {
               deleteSheet(ctx_, specialOp.value.id);
               patches.length = 0;

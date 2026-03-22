@@ -14,9 +14,22 @@ export { getSheet };
 
 export function initSheetData(
   draftCtx: Context,
-  index: number,
-  newData: Sheet
+  index: number | null | undefined,
+  newData: Sheet | null | undefined
 ): CellMatrix | null {
+  if (newData == null) return null;
+  let idx: number | null =
+    index != null &&
+    draftCtx.luckysheetfile[index] != null &&
+    newData.id != null &&
+    String(draftCtx.luckysheetfile[index]!.id) === String(newData.id)
+      ? index
+      : null;
+  if (idx == null && newData.id != null) {
+    idx = getSheetIndex(draftCtx, newData.id as string);
+  }
+  if (idx == null) return null;
+
   const { celldata, row, column } = newData;
   const lastRow = _.maxBy<CellWithRowAndCol>(celldata, "r");
   const lastCol = _.maxBy(celldata, "c");
@@ -36,13 +49,13 @@ export function initSheetData(
     celldata?.forEach((d) => {
       expandedData[d.r][d.c] = d.v;
     });
-    if (draftCtx.luckysheetfile[index] == null) {
+    if (draftCtx.luckysheetfile[idx] == null) {
       newData.data = expandedData;
       delete newData.celldata;
       draftCtx.luckysheetfile.push(newData);
     } else {
-      draftCtx.luckysheetfile[index].data = expandedData;
-      delete draftCtx.luckysheetfile[index].celldata;
+      draftCtx.luckysheetfile[idx].data = expandedData;
+      delete draftCtx.luckysheetfile[idx].celldata;
     }
     return expandedData;
   }
