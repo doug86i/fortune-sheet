@@ -89,8 +89,7 @@ export function addSheet(
   sheetName: string | undefined = undefined,
   sheetData: Sheet | undefined = undefined
 ) {
-  if (/* isEditMode() || */ ctx.allowEdit === false) {
-    // alert("非编辑模式下不允许该操作！");
+  if (ctx.allowEdit === false && _.isNil(sheetData)) {
     return;
   }
   const order = ctx.luckysheetfile.length;
@@ -143,10 +142,6 @@ export function addSheet(
 }
 
 export function deleteSheet(ctx: Context, id: string) {
-  if (ctx.allowEdit === false) {
-    return;
-  }
-
   const arrIndex = getSheetIndex(ctx, id);
 
   if (arrIndex == null) {
