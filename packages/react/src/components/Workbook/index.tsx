@@ -27,6 +27,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useImperativeHandle,
 } from "react";
@@ -61,6 +62,14 @@ type AdditionalProps = {
   onOp?: (op: Op[]) => void;
 };
 
+/** Collab `onOp` must not run inside `setState` updaters (React Strict Mode / batching can duplicate). */
+type PendingCollabEmit = {
+  ctx: Context;
+  patches: Patch[];
+  options?: SetContextOptions;
+  undo: boolean;
+};
+
 const triggerGroupValuesRefresh = (ctx: Context) => {
   if (ctx.groupValuesRefreshData.length > 0) {
     groupValuesRefresh(ctx);
@@ -85,6 +94,7 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
     const scrollbarY = useRef<HTMLDivElement>(null);
     const cellArea = useRef<HTMLDivElement>(null);
     const workbookContainer = useRef<HTMLDivElement>(null);
+    const pendingCollabEmitsRef = useRef<PendingCollabEmit[]>([]);
 
     const refs: RefValues = useMemo(
       () => ({
@@ -196,6 +206,15 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
       },
       [onOp]
     );
+
+    useLayoutEffect(() => {
+      const batch = pendingCollabEmitsRef.current;
+      if (batch.length === 0) return;
+      pendingCollabEmitsRef.current = [];
+      for (const item of batch) {
+        emitOp(item.ctx, item.patches, item.options, item.undo);
+      }
+    }, [context, emitOp]);
 
     function reduceUndoList(ctx: Context, ctxBefore: Context) {
       const sheetsId = ctx.luckysheetfile.map((sheet) => sheet.id);
@@ -316,7 +335,12 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
                 options,
               });
               globalCache.current.redoList = [];
-              emitOp(result, filteredPatches, options);
+              pendingCollabEmitsRef.current.push({
+                ctx: result,
+                patches: filteredPatches,
+                options,
+                undo: false,
+              });
             }
           } else {
             if (patches?.[0]?.value?.length < ctx_?.luckysheetfile?.length) {
@@ -326,7 +350,7 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
           return result;
         });
       },
-      [emitOp]
+      []
     );
 
     const handleUndo = useCallback(() => {
@@ -374,7 +398,12 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
             );
             delete inversedOptions!.addSheet!.value!.data;
           }
-          emitOp(newContext, history.inversePatches, inversedOptions, true);
+          pendingCollabEmitsRef.current.push({
+            ctx: newContext,
+            patches: history.inversePatches,
+            options: inversedOptions,
+            undo: true,
+          });
           if (
             history.options?.deleteRowColOp ||
             history.options?.insertRowColOp ||
@@ -390,7 +419,7 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
           return newContext;
         });
       }
-    }, [emitOp]);
+    }, []);
 
     const handleRedo = useCallback(() => {
       const history = globalCache.current.redoList.pop();
@@ -398,7 +427,12 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
         setContext((ctx_) => {
           const newContext = applyPatches(ctx_, history.patches);
           globalCache.current.undoList.push(history);
-          emitOp(newContext, history.patches, history.options);
+          pendingCollabEmitsRef.current.push({
+            ctx: newContext,
+            patches: history.patches,
+            options: history.options,
+            undo: false,
+          });
 
           if (
             history.options?.deleteRowColOp ||
@@ -415,7 +449,7 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
           return newContext;
         });
       }
-    }, [emitOp]);
+    }, []);
 
     useEffect(() => {
       if (context.luckysheet_select_save != null) {
