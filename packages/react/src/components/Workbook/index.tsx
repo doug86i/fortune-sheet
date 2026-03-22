@@ -143,9 +143,12 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
     const initSheetData = useCallback(
       (
         draftCtx: Context,
-        newData: SheetType,
-        index: number
+        newData: SheetType | null | undefined,
+        index: number | null | undefined
       ): CellMatrix | null => {
+        if (newData == null || index == null) return null;
+        if (index < 0 || index >= draftCtx.luckysheetfile.length) return null;
+        if (draftCtx.luckysheetfile[index] == null) return null;
         const { celldata, row, column } = newData;
         const lastRow = _.maxBy<CellWithRowAndCol>(celldata, "r");
         const lastCol = _.maxBy(celldata, "c");
@@ -167,8 +170,10 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
             expandedData[d.r][d.c] = d.v;
           });
           draftCtx.luckysheetfile = produce(draftCtx.luckysheetfile, (d) => {
-            d[index!].data = expandedData;
-            delete d[index!].celldata;
+            const fileRow = d[index];
+            if (fileRow == null) return;
+            fileRow.data = expandedData;
+            delete fileRow.celldata;
             return d;
           });
           return expandedData;
@@ -462,8 +467,10 @@ const Workbook = React.forwardRef<WorkbookInstance, Settings & AdditionalProps>(
             });
             draftCtx.luckysheetfile = newData;
             newData.forEach((newDatum) => {
-              const index = getSheetIndex(draftCtx, newDatum.id!) as number;
+              const index = getSheetIndex(draftCtx, newDatum.id!);
+              if (index == null) return;
               const sheet = draftCtx.luckysheetfile?.[index];
+              if (sheet == null) return;
               const cellMatrixData = initSheetData(draftCtx, sheet, index);
               setFormulaCellInfoMap(
                 draftCtx,
