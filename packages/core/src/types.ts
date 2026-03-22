@@ -303,6 +303,8 @@ export type GlobalCache = {
   touchMoveStartPos?: {
     x: number;
     y: number;
+    initialScrollLeft?: number;
+    initialScrollTop?: number;
     vy: number;
     moveType: string;
     vy_x?: number;
