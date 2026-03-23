@@ -122,6 +122,11 @@ export function addSheet(
     : sheetData;
   if (sheetName !== undefined) sheetconfig.name = sheetName;
   if (sheetconfig.id === undefined) sheetconfig.id = uuidv4();
+  const newId = String(sheetconfig.id ?? "").trim();
+  if (newId !== "" && getSheetIndex(ctx, newId) != null) {
+    // Idempotent guard for replayed addSheet operations.
+    return;
+  }
   if (ctx.hooks.beforeAddSheet?.(sheetconfig) === false) {
     return;
   }

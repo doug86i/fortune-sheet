@@ -51,6 +51,7 @@ const SheetTab: React.FC = () => {
   const onAddSheetClick = useCallback(
     () =>
       setTimeout(() => {
+        const newSheetId = settings?.generateSheetId?.();
         setContext(
           (draftCtx) => {
             if (draftCtx.luckysheetCellUpdate.length > 0) {
@@ -61,7 +62,7 @@ const SheetTab: React.FC = () => {
                 refs.cellInput.current!
               );
             }
-            addSheet(draftCtx, settings);
+            addSheet(draftCtx, settings, newSheetId);
           },
           { addSheetOp: true }
         );
